@@ -62,7 +62,9 @@
                      FontFamily="Consolas" FontSize="12"
                      Background="{StaticResource WxlBackgroundBrush}"
                      Foreground="{StaticResource WxlTextBrush}"
-                     BorderThickness="0" />
+                     BorderThickness="0"
+                     TextWrapping="NoWrap"
+                     TextChanged="TxtLog_TextChanged" />
         </Border>
     </Grid>
 </Page>

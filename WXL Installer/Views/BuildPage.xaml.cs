@@ -53,6 +53,9 @@ namespace WXL_Installer.Views
                 RedirectStandardOutput = true,
                 RedirectStandardError = true
             };
+            // Stop MSBuild from keeping its worker nodes alive after the build,
+            // which causes lingering msbuild.exe processes.
+            psi.EnvironmentVariables["MSBUILDDISABLENODEREUSE"] = "1";
 
             try
             {
@@ -96,7 +99,9 @@ namespace WXL_Installer.Views
             }
 
             TxtLog.AppendText(line + Environment.NewLine);
-            TxtLog.ScrollToEnd();
+            // Move the caret to the end — this is the reliable way to auto-scroll
+            // a TextBox; ScrollToEnd() can fire before layout is updated.
+            TxtLog.CaretIndex = TxtLog.Text.Length;
 
             int pct = -1; string msg = null;
             if (line.StartsWith("=== WarcraftXL.dll",     StringComparison.OrdinalIgnoreCase)) { pct = 10; msg = "Building DLL, proxy, and patcher…"; }
@@ -109,6 +114,12 @@ namespace WXL_Installer.Views
                 if (pct > Progress.Value) Progress.Value = pct;
                 SetStatus(msg, "WxlTextMutedBrush");
             }
+        }
+
+        private void TxtLog_TextChanged(object sender, TextChangedEventArgs e)
+        {
+            // ScrollToEnd is already handled in OnLine at Background priority.
+            // This handler is kept to satisfy the XAML attribute.
         }
 
         private void SetStatus(string text, string brushKey)

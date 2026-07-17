@@ -21,9 +21,10 @@ namespace WXL_Installer.Views
         // Each entry is (owner, repo).
         private static readonly (string Owner, string Repo)[] ExtraCatalogEntries =
         {
-            ("Furioz420", "wxl-retail-db2"),
-            ("Furioz420", "wxl-equip-module-DB2"),
-            ("Furioz420", "wxl-client-extensions"),
+            ("Furioz420",    "wxl-retail-db2"),
+            ("Furioz420",    "wxl-equip-module-DB2"),
+            ("Furioz420",    "wxl-client-extensions"),
+            ("WarcraftXL",   "wxl-unit-outline"),
         };
 
         private List<GitHubRepo> _catalog;
@@ -53,21 +54,14 @@ namespace WXL_Installer.Views
         {
             InitializeComponent();
             Loaded += async (_, __) => await InitAsync();
-            // Register wheel handler that also fires even if a child marked the event Handled.
-            AddHandler(System.Windows.Input.Mouse.MouseWheelEvent,
-                       new System.Windows.Input.MouseWheelEventHandler(Page_MouseWheel_HandledToo),
-                       handledEventsToo: true);
         }
 
-        private void Page_MouseWheel_HandledToo(object sender, System.Windows.Input.MouseWheelEventArgs e)
+        // PreviewMouseWheel on the StackPanel tunnels DOWN before any child sees it,
+        // so checked/unchecked CheckBoxes cannot swallow it. We scroll the parent
+        // ScrollViewer directly and mark Handled so the NavigationView stays still.
+        private void ModulesList_PreviewMouseWheel(object sender, System.Windows.Input.MouseWheelEventArgs e)
         {
-            if (ModulesScroll == null) return;
-            var pos = e.GetPosition(ModulesScroll);
-            if (pos.X < 0 || pos.Y < 0 ||
-                pos.X > ModulesScroll.ActualWidth || pos.Y > ModulesScroll.ActualHeight)
-                return;
-            double delta = e.Delta > 0 ? -48 : 48;
-            ModulesScroll.ScrollToVerticalOffset(ModulesScroll.VerticalOffset + delta);
+            ModulesScroll.ScrollToVerticalOffset(ModulesScroll.VerticalOffset + (e.Delta > 0 ? -60 : 60));
             e.Handled = true;
         }
 
@@ -366,28 +360,12 @@ namespace WXL_Installer.Views
 
         private void ModulesScroll_PreviewMouseWheel(object sender, System.Windows.Input.MouseWheelEventArgs e)
         {
-            ScrollModules(e);
+            // Handled by ModulesList_PreviewMouseWheel.
         }
 
         private void Page_PreviewMouseWheel(object sender, System.Windows.Input.MouseWheelEventArgs e)
         {
-            // If the cursor is over the modules list area, scroll it — otherwise let
-            // the event bubble to any outer scroller.
-            if (ModulesScroll == null || e.Handled) return;
-            var pos = e.GetPosition(ModulesScroll);
-            if (pos.X < 0 || pos.Y < 0 ||
-                pos.X > ModulesScroll.ActualWidth || pos.Y > ModulesScroll.ActualHeight)
-                return;
-            ScrollModules(e);
-        }
-
-        private void ScrollModules(System.Windows.Input.MouseWheelEventArgs e)
-        {
-            var sv = ModulesScroll;
-            if (sv == null) return;
-            double delta = e.Delta > 0 ? -48 : 48;
-            sv.ScrollToVerticalOffset(sv.VerticalOffset + delta);
-            e.Handled = true;
+            // Handled by ModulesList_PreviewMouseWheel.
         }
 
 

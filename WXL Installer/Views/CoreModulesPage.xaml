@@ -3,8 +3,7 @@
       xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
       xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
       Title="Core &amp; Modules"
-      Background="Transparent"
-      PreviewMouseWheel="Page_PreviewMouseWheel">
+      Background="Transparent">
 
     <Grid Margin="40,32,40,32">
         <Grid.RowDefinitions>
@@ -53,12 +52,11 @@
             <ScrollViewer x:Name="ModulesScroll"
                           VerticalScrollBarVisibility="Auto"
                           HorizontalScrollBarVisibility="Disabled"
-                          PanningMode="VerticalOnly"
-                          CanContentScroll="False"
-                          PreviewMouseWheel="ModulesScroll_PreviewMouseWheel">
+                          CanContentScroll="False">
                 <StackPanel x:Name="ModulesList"
                             Margin="12"
-                            Background="Transparent" />
+                            Background="Transparent"
+                            PreviewMouseWheel="ModulesList_PreviewMouseWheel" />
             </ScrollViewer>
         </Border>
     </Grid>
