@@ -26,7 +26,13 @@ namespace WXL_Installer
         public MainWindow()
         {
             InitializeComponent();
-            Loaded += (_, __) => Nav.Navigate(typeof(Views.WelcomePage));
+            Title = "WarcraftXL Installer  v" + Updater.CurrentVersion;
+            Loaded += async (_, __) =>
+            {
+                Nav.Navigate(typeof(Views.WelcomePage));
+                // Fire and forget — never block startup on the network check.
+                await Updater.CheckAsync();
+            };
             SourceInitialized += (_, __) =>
             {
                 var hwnd = new WindowInteropHelper(this).Handle;

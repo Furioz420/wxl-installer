@@ -52,6 +52,16 @@
                 </StackPanel>
             </Border>
 
+            <StackPanel Orientation="Horizontal" Margin="0,16,0,0">
+                <ui:Button x:Name="BtnCheckUpdate"
+                           Content="Check for updates"
+                           Click="BtnCheckUpdate_Click" />
+                <TextBlock x:Name="LblVersion"
+                           Style="{StaticResource WxlHint}"
+                           VerticalAlignment="Center"
+                           Margin="12,0,0,0" />
+            </StackPanel>
+
         </StackPanel>
     </ScrollViewer>
 </Page>

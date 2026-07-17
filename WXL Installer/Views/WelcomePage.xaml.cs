@@ -21,7 +21,15 @@ namespace WXL_Installer.Views
             TxtClientPath.Text = _state.Settings.ClientPath ?? "";
             _loading = false;
             UpdateClientStatus();
+            LblVersion.Text = "Installed version: v" + Updater.CurrentVersion;
             Loaded += async (_, __) => await LoadLogoAsync();
+        }
+
+        private async void BtnCheckUpdate_Click(object sender, RoutedEventArgs e)
+        {
+            BtnCheckUpdate.IsEnabled = false;
+            try { await Updater.CheckAsync(showUpToDate: true); }
+            finally { BtnCheckUpdate.IsEnabled = true; }
         }
 
         private void Path_Changed(object sender, TextChangedEventArgs e)
