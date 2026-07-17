@@ -14,8 +14,12 @@ namespace WXL_Installer.Views
     public partial class Db2Page : Page
     {
         private readonly WizardState _state = WizardState.Current;
-        private const string Db2PackageUrl =
-            "https://raw.githubusercontent.com/Furioz420/wxl-installer/master/DBFilesClient.zip";
+
+        // Latest ModelFilePath.db2 / TextureFilePath.db2 come from DB2Gen releases.
+        private const string Db2GenOwner = "WarcraftXL";
+        private const string Db2GenRepo = "DB2Gen";
+        // Only assets whose names end in ".db2" are considered required DB2 files.
+        private static readonly string[] RequiredAssetExtensions = { ".db2" };
 
         public Db2Page() { InitializeComponent(); Loaded += async (_, __) => { RefreshEquipSection(); await LoadRequiredFilesPreviewAsync(); }; }
 
@@ -115,36 +119,24 @@ namespace WXL_Installer.Views
 
             try
             {
-                var tempZip = Path.Combine(Path.GetTempPath(),
-                    "wxl-DBFilesClient-preview-" + Guid.NewGuid().ToString("N") + ".zip");
-                try
+                var release = await Task.Run(() => GitHubHelper.GetLatestRelease(Db2GenOwner, Db2GenRepo));
+                var assets = (release?.Assets ?? new List<GitHubReleaseAsset>())
+                    .Where(a => a != null && !string.IsNullOrEmpty(a.Name) &&
+                                RequiredAssetExtensions.Any(ext =>
+                                    a.Name.EndsWith(ext, StringComparison.OrdinalIgnoreCase)))
+                    .OrderBy(a => a.Name)
+                    .ToList();
+
+                var rows = assets.Select(a => new EquipFileRow
                 {
-                    await GitHubHelper.DownloadFileAsync(Db2PackageUrl, tempZip, null);
-                    var rows = new List<EquipFileRow>();
-                    using (var arch = ZipFile.OpenRead(tempZip))
-                    {
-                        foreach (var en in arch.Entries
-                                               .Where(en => en.Length > 0)
-                                               .OrderBy(en => en.FullName))
-                        {
-                            if (!string.Equals(Path.GetExtension(en.FullName), ".db2",
-                                               StringComparison.OrdinalIgnoreCase)) continue;
-                            var name = Path.GetFileName(en.FullName);
-                            if (string.IsNullOrEmpty(name)) continue;
-                            rows.Add(new EquipFileRow
-                            {
-                                FileName = name,
-                                TargetDisplay = "→ " + patchDisplay
-                            });
-                        }
-                    }
-                    RequiredFilesList.ItemsSource = rows;
-                    LblRequiredListStatus.Text = $"{rows.Count} DB2 file(s) in DBFilesClient.zip";
-                }
-                finally
-                {
-                    try { if (File.Exists(tempZip)) File.Delete(tempZip); } catch { }
-                }
+                    FileName = a.Name,
+                    TargetDisplay = "→ " + patchDisplay
+                }).ToList();
+
+                RequiredFilesList.ItemsSource = rows;
+                LblRequiredListStatus.Text = rows.Count == 0
+                    ? "No .db2 assets found in the latest DB2Gen release."
+                    : $"{rows.Count} DB2 file(s) from DB2Gen release {release?.TagName ?? "(latest)"}";
             }
             catch (Exception ex)
             {
@@ -238,83 +230,62 @@ namespace WXL_Installer.Views
             BtnInstall.IsEnabled = false;
             Progress.Value = 0;
             Progress.IsIndeterminate = true;
-            SetStatus("Downloading DBFilesClient.zip…", "WxlTextMutedBrush");
+            SetStatus("Fetching latest DB2Gen release…", "WxlTextMutedBrush");
 
             try
             {
-                var tempZip = Path.Combine(Path.GetTempPath(),
-                                           "wxl-DBFilesClient-" + Guid.NewGuid().ToString("N") + ".zip");
-                var prog = new Progress<DownloadProgress>(t =>
-                {
-                    if (t.Total > 0)
-                    {
-                        Progress.IsIndeterminate = false;
-                        Progress.Value = 60.0 * t.Downloaded / t.Total;
-                    }
-                });
-                await GitHubHelper.DownloadFileAsync(Db2PackageUrl, tempZip, prog);
-                Progress.IsIndeterminate = false;
-                Progress.Value = 60;
+                var release = await Task.Run(() => GitHubHelper.GetLatestRelease(Db2GenOwner, Db2GenRepo));
+                var assets = (release?.Assets ?? new List<GitHubReleaseAsset>())
+                    .Where(a => a != null && !string.IsNullOrEmpty(a.BrowserDownloadUrl) &&
+                                RequiredAssetExtensions.Any(ext =>
+                                    a.Name.EndsWith(ext, StringComparison.OrdinalIgnoreCase)))
+                    .ToList();
+                if (assets.Count == 0)
+                    throw new Exception("Latest DB2Gen release has no .db2 assets.");
 
-                SetStatus("Extracting DB2 files…", "WxlTextMutedBrush");
-                var tempExtract = Path.Combine(Path.GetTempPath(),
-                                               "wxl-db2-" + Guid.NewGuid().ToString("N"));
-                Directory.CreateDirectory(tempExtract);
+                // Resolve target patch first so any error surfaces before downloading.
+                var db2Path = ResolvePatchDbFilesClient(clientPath);
+                Directory.CreateDirectory(db2Path);
+
                 int fileCount = 0;
-                await Task.Run(() =>
+                for (int i = 0; i < assets.Count; i++)
                 {
-                    using var archive = ZipFile.OpenRead(tempZip);
-                    foreach (var entry in archive.Entries)
+                    var asset = assets[i];
+                    int idx = i;
+                    SetStatus($"Downloading {asset.Name} ({idx + 1}/{assets.Count})…", "WxlTextMutedBrush");
+                    Progress.IsIndeterminate = true;
+
+                    var tempFile = Path.Combine(Path.GetTempPath(),
+                                                "wxl-db2-" + Guid.NewGuid().ToString("N") + "-" + asset.Name);
+                    var prog = new Progress<DownloadProgress>(t =>
                     {
-                        if (entry.Length <= 0) continue;
-                        if (!string.Equals(Path.GetExtension(entry.FullName), ".db2",
-                                           StringComparison.OrdinalIgnoreCase)) continue;
-                        var name = Path.GetFileName(entry.FullName);
-                        if (string.IsNullOrEmpty(name)) continue;
-                        entry.ExtractToFile(Path.Combine(tempExtract, name), true);
+                        if (t.Total > 0)
+                        {
+                            Progress.IsIndeterminate = false;
+                            double moduleFraction = (double)t.Downloaded / t.Total;
+                            double overall = ((idx + moduleFraction) / assets.Count) * 80.0;
+                            Progress.Value = overall;
+                        }
+                    });
+
+                    try
+                    {
+                        await GitHubHelper.DownloadFileAsync(asset.BrowserDownloadUrl, tempFile, prog);
+                        File.Copy(tempFile, Path.Combine(db2Path, asset.Name), true);
                         fileCount++;
                     }
-                });
-                Progress.Value = 75;
-                if (fileCount == 0) throw new Exception("DBFilesClient.zip contained no DB2 files.");
-
-                var dataDir = Path.Combine(clientPath, "Data");
-                Directory.CreateDirectory(dataDir);
-
-                string targetPatch = null;
-                foreach (var dir in Directory.GetDirectories(dataDir, "Patch-*.mpq")
-                                             .Where(d => Regex.IsMatch(Path.GetFileName(d),
-                                                       @"^Patch-[A-Z]\.mpq$", RegexOptions.IgnoreCase))
-                                             .OrderByDescending(d => d))
-                {
-                    if (Directory.Exists(Path.Combine(dir, "DBFilesClient")))
+                    finally
                     {
-                        targetPatch = dir;
-                        break;
+                        try { if (File.Exists(tempFile)) File.Delete(tempFile); } catch { }
                     }
-                }
-                if (targetPatch == null)
-                {
-                    for (char c = 'Z'; c >= 'A'; c--)
-                    {
-                        var cand = Path.Combine(dataDir, "Patch-" + c + ".mpq");
-                        if (!Directory.Exists(cand)) { targetPatch = cand; break; }
-                    }
-                    if (targetPatch == null)
-                        throw new Exception("No free Patch-A..Z.mpq folder available in " + dataDir);
-                }
 
-                SetStatus("Installing DB2 files into " + Path.GetFileName(targetPatch) + "…", "WxlTextMutedBrush");
-                var db2Path = Path.Combine(targetPatch, "DBFilesClient");
-                Directory.CreateDirectory(db2Path);
-                foreach (var f in Directory.GetFiles(tempExtract))
-                    File.Copy(f, Path.Combine(db2Path, Path.GetFileName(f)), true);
-
-                try { File.Delete(tempZip); } catch { }
-                try { Directory.Delete(tempExtract, true); } catch { }
+                    Progress.IsIndeterminate = false;
+                    Progress.Value = ((idx + 1.0) / assets.Count) * 80.0;
+                }
 
                 Progress.Value = 100;
-                SetStatus($"✓  Installed {fileCount} DB2 file(s) in {db2Path}", "WxlSuccessBrush");
+                SetStatus($"✓  Installed {fileCount} DB2 file(s) from DB2Gen {release?.TagName} in {db2Path}",
+                          "WxlSuccessBrush");
                 _state.Db2Installed = true;
 
                 // If the equip module ships a DBCandDB2.zip, install those into the same patch.
