@@ -2,138 +2,165 @@ using System;
 using System.Diagnostics;
 using System.IO;
 using System.IO.Compression;
-using System.Threading;
+using System.Linq;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
+using System.Windows.Navigation;
 
 namespace WXL_Installer.Views
 {
     public partial class ColdConvertPage : Page
     {
+        private const string CcOwner = "WarcraftXL";
+        private const string CcRepo = "wxl-cold-converter";
+        // Prefer x64 build over x86.
+        private static readonly string[] AssetPreference = { "x64", "x86" };
+
         private readonly WizardState _state = WizardState.Current;
 
         public ColdConvertPage()
         {
             InitializeComponent();
-            TxtAssetsPath.Text = _state.Settings.AssetsPath ?? "";
-            TxtOutputPath.Text = _state.Settings.ColdOutputPath ?? "";
+            RefreshInstalledLabel();
         }
 
-        private void TxtAssets_Changed(object sender, TextChangedEventArgs e)
+        private void RefreshInstalledLabel()
         {
-            _state.Settings.AssetsPath = TxtAssetsPath.Text?.Trim();
-            _state.Settings.Save();
-        }
-
-        private void TxtOutput_Changed(object sender, TextChangedEventArgs e)
-        {
-            _state.Settings.ColdOutputPath = TxtOutputPath.Text?.Trim();
-            _state.Settings.Save();
-        }
-
-        private void BrowseAssets_Click(object sender, RoutedEventArgs e)
-        {
-            var dlg = new Microsoft.Win32.OpenFolderDialog { InitialDirectory = TxtAssetsPath.Text ?? "" };
-            if (dlg.ShowDialog() == true) TxtAssetsPath.Text = dlg.FolderName;
-        }
-
-        private void BrowseOutput_Click(object sender, RoutedEventArgs e)
-        {
-            var dlg = new Microsoft.Win32.OpenFolderDialog { InitialDirectory = TxtOutputPath.Text ?? "" };
-            if (dlg.ShowDialog() == true) TxtOutputPath.Text = dlg.FolderName;
-        }
-
-        private void BtnHelp_Click(object sender, RoutedEventArgs e)
-        {
-            MessageBox.Show(
-                "Cold converting pre-processes your custom model and texture assets " +
-                "(.m2 / .blp files) into a form WarcraftXL can load quickly at runtime.\n\n" +
-                "• It only touches the assets folder you point it at — your client is untouched.\n" +
-                "• You only need to run it when you add or change custom assets.\n" +
-                "• This step is optional; skip it if you're not using custom assets yet.",
-                "About Cold Converting",
-                MessageBoxButton.OK,
-                MessageBoxImage.Information);
-        }
-
-        private async void BtnRun_Click(object sender, RoutedEventArgs e)
-        {
-            var assetsPath = TxtAssetsPath.Text?.Trim();
-            if (string.IsNullOrEmpty(assetsPath) || !Directory.Exists(assetsPath))
+            var exe = FindConverterExe();
+            if (exe != null)
             {
-                SetStatus("Please select a valid assets folder first.", "WxlDangerBrush");
+                var ver = _state.Settings.ColdConverterVersion;
+                LblInstalled.Text = string.IsNullOrEmpty(ver)
+                    ? "Installed at: " + exe
+                    : $"Installed {ver} — {exe}";
+                BtnLaunch.Content = "Run cold converter";
+                BtnReinstall.IsEnabled = true;
+                BtnOpenFolder.IsEnabled = true;
+            }
+            else
+            {
+                LblInstalled.Text = "Not downloaded yet.";
+                BtnLaunch.Content = "Download & run latest";
+                BtnReinstall.IsEnabled = false;
+                BtnOpenFolder.IsEnabled = false;
+            }
+        }
+
+        private string FindConverterExe()
+        {
+            var dir = _state.Settings.ColdConverterPath;
+            if (string.IsNullOrEmpty(dir) || !Directory.Exists(dir)) return null;
+            // Look for the GUI exe -- ships as WarcraftXL-Cold-Converter.exe or similar; pick the largest .exe.
+            var exes = Directory.EnumerateFiles(dir, "*.exe", SearchOption.AllDirectories).ToArray();
+            if (exes.Length == 0) return null;
+            return exes.OrderByDescending(p => new FileInfo(p).Length).First();
+        }
+
+        private async void BtnLaunch_Click(object sender, RoutedEventArgs e)
+        {
+            var exe = FindConverterExe();
+            if (exe != null)
+            {
+                LaunchExe(exe);
                 return;
             }
+            await DownloadAndLaunchAsync();
+        }
 
-            var outputPath = TxtOutputPath.Text?.Trim();
-            if (string.IsNullOrEmpty(outputPath))
+        private async void BtnReinstall_Click(object sender, RoutedEventArgs e)
+        {
+            await DownloadAndLaunchAsync(forceReinstall: true, launchAfter: false);
+        }
+
+        private void BtnOpenFolder_Click(object sender, RoutedEventArgs e)
+        {
+            var dir = _state.Settings.ColdConverterPath;
+            if (!string.IsNullOrEmpty(dir) && Directory.Exists(dir))
+                Process.Start(new ProcessStartInfo { FileName = dir, UseShellExecute = true });
+        }
+
+        private void LaunchExe(string exe)
+        {
+            try
             {
-                SetStatus("Please select an output folder for the converted assets.", "WxlDangerBrush");
-                return;
+                Process.Start(new ProcessStartInfo
+                {
+                    FileName = exe,
+                    WorkingDirectory = Path.GetDirectoryName(exe),
+                    UseShellExecute = true,
+                });
+                SetStatus("✓  Launched " + Path.GetFileName(exe), "WxlSuccessBrush");
             }
-            try { Directory.CreateDirectory(outputPath); }
             catch (Exception ex)
             {
-                SetStatus("Could not create output folder: " + ex.Message, "WxlDangerBrush");
-                return;
+                SetStatus("✗  " + ex.Message, "WxlDangerBrush");
             }
+        }
 
-            BtnRun.IsEnabled = false;
-            SetStatus("Fetching latest cold-converter release…", "WxlTextMutedBrush");
-            Progress.Value = 5;
+        private async Task DownloadAndLaunchAsync(bool forceReinstall = false, bool launchAfter = true)
+        {
+            BtnLaunch.IsEnabled = false;
+            BtnReinstall.IsEnabled = false;
+            Progress.Value = 0;
 
             try
             {
-                var release = await Task.Run(() => GitHubHelper.GetLatestRelease("WarcraftXL", "wxl-cold-converter"));
-                GitHubReleaseAsset asset = null;
-                foreach (var a in release.Assets)
-                    if (a.Name.EndsWith(".zip", StringComparison.OrdinalIgnoreCase)) { asset = a; break; }
-                if (asset == null) throw new Exception("No zip asset in latest cold-converter release.");
+                SetStatus("Fetching latest cold-converter release…", "WxlTextMutedBrush");
+                var release = await Task.Run(() => GitHubHelper.GetLatestRelease(CcOwner, CcRepo));
+                if (release == null) throw new Exception("No published cold-converter release found on GitHub.");
 
-                var tempDir = Path.Combine(Path.GetTempPath(), "wxl-cold-converter-" + release.TagName);
-                var zipPath = Path.Combine(tempDir, asset.Name);
+                var asset = PickAsset(release);
+                if (asset == null) throw new Exception("The cold-converter release has no downloadable zip asset.");
 
-                SetStatus("Downloading cold-converter…", "WxlTextMutedBrush");
+                var installRoot = Path.Combine(
+                    Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                    "WxlInstaller", "cold-converter");
+                Directory.CreateDirectory(installRoot);
+
+                var versionDir = Path.Combine(installRoot, SafeName(release.TagName ?? "unknown"));
+                if (forceReinstall && Directory.Exists(versionDir))
+                {
+                    try { Directory.Delete(versionDir, true); }
+                    catch (Exception ex) { throw new Exception("Could not remove existing install: " + ex.Message); }
+                }
+                Directory.CreateDirectory(versionDir);
+
+                var zipPath = Path.Combine(versionDir, asset.Name);
+                SetStatus($"Downloading {asset.Name}…", "WxlTextMutedBrush");
                 var prog = new Progress<DownloadProgress>(t =>
                 {
-                    if (t.Total > 0) Progress.Value = 5 + 55.0 * t.Downloaded / t.Total;
+                    if (t.Total > 0) Progress.Value = 80.0 * t.Downloaded / t.Total;
                 });
                 await GitHubHelper.DownloadFileAsync(asset.BrowserDownloadUrl, zipPath, prog);
-                Progress.Value = 60;
 
                 SetStatus("Extracting…", "WxlTextMutedBrush");
-                var extractDir = Path.Combine(tempDir, "extracted");
+                Progress.Value = 90;
+                var extractDir = Path.Combine(versionDir, "extracted");
                 if (Directory.Exists(extractDir)) Directory.Delete(extractDir, true);
                 ZipFile.ExtractToDirectory(zipPath, extractDir);
-                Progress.Value = 70;
 
-                var exes = Directory.GetFiles(extractDir, "*.exe", SearchOption.AllDirectories);
-                if (exes.Length == 0) throw new Exception("No executable in the cold-converter archive.");
-                var exePath = exes[0];
+                // Flatten if the zip nests everything under one folder.
+                var payload = FlattenPayload(extractDir);
 
-                SetStatus("Running cold-converter — this can take a while…", "WxlTextMutedBrush");
-                Progress.Value = 75;
-                var psi = new ProcessStartInfo(exePath, $"\"{assetsPath}\" \"{outputPath}\"")
-                {
-                    UseShellExecute = false,
-                    RedirectStandardOutput = true,
-                    RedirectStandardError = true,
-                    CreateNoWindow = true
-                };
-                using (var proc = Process.Start(psi))
-                {
-                    await Task.Run(() => proc.WaitForExit());
-                    if (proc.ExitCode != 0)
-                    {
-                        var err = proc.StandardError.ReadToEnd();
-                        throw new Exception($"Cold-converter exited with code {proc.ExitCode}.\n{err}");
-                    }
-                }
+                _state.Settings.ColdConverterPath = payload;
+                _state.Settings.ColdConverterVersion = release.TagName ?? "";
+                _state.Settings.Save();
 
                 Progress.Value = 100;
-                SetStatus("✓  Cold conversion complete.", "WxlSuccessBrush");
+                RefreshInstalledLabel();
+
+                if (launchAfter)
+                {
+                    var exe = FindConverterExe();
+                    if (exe == null) throw new Exception("No executable found in the extracted archive.");
+                    LaunchExe(exe);
+                }
+                else
+                {
+                    SetStatus($"✓  Installed {release.TagName} at {payload}", "WxlSuccessBrush");
+                }
             }
             catch (Exception ex)
             {
@@ -142,8 +169,57 @@ namespace WXL_Installer.Views
             }
             finally
             {
-                BtnRun.IsEnabled = true;
+                BtnLaunch.IsEnabled = true;
+                BtnReinstall.IsEnabled = FindConverterExe() != null;
             }
+        }
+
+        private static GitHubReleaseAsset PickAsset(GitHubRelease release)
+        {
+            if (release.Assets == null || release.Assets.Count == 0) return null;
+            var zips = release.Assets
+                .Where(a => a.Name != null && a.Name.EndsWith(".zip", StringComparison.OrdinalIgnoreCase))
+                .ToArray();
+            if (zips.Length == 0) return null;
+            foreach (var pref in AssetPreference)
+            {
+                var hit = zips.FirstOrDefault(a => a.Name.IndexOf(pref, StringComparison.OrdinalIgnoreCase) >= 0);
+                if (hit != null) return hit;
+            }
+            return zips[0];
+        }
+
+        private static string FlattenPayload(string extractDir)
+        {
+            var current = extractDir;
+            for (int i = 0; i < 4; i++)
+            {
+                var entries = Directory.GetFileSystemEntries(current);
+                if (entries.Length == 1 && Directory.Exists(entries[0]))
+                {
+                    current = entries[0];
+                    continue;
+                }
+                break;
+            }
+            return current;
+        }
+
+        private static string SafeName(string s)
+        {
+            foreach (var c in Path.GetInvalidFileNameChars())
+                s = s.Replace(c, '_');
+            return s;
+        }
+
+        private void Hyperlink_RequestNavigate(object sender, RequestNavigateEventArgs e)
+        {
+            try
+            {
+                Process.Start(new ProcessStartInfo { FileName = e.Uri.AbsoluteUri, UseShellExecute = true });
+            }
+            catch { }
+            e.Handled = true;
         }
 
         private void SetStatus(string text, string brushKey)

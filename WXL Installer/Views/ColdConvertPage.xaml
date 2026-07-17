@@ -8,54 +8,53 @@
     <ScrollViewer VerticalScrollBarVisibility="Auto">
         <StackPanel Margin="40,32,40,32" MaxWidth="820" HorizontalAlignment="Left">
 
-            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                <TextBlock Style="{StaticResource WxlTitle}" Text="Cold Convert (optional)" />
-                <ui:Button x:Name="BtnHelp"
-                           Margin="12,4,0,0"
-                           Padding="8,2,8,2"
-                           VerticalAlignment="Center"
-                           Content="?"
-                           ToolTip="What is cold converting?"
-                           Click="BtnHelp_Click" />
-            </StackPanel>
+            <TextBlock Style="{StaticResource WxlTitle}" Text="Cold Convert (optional)" />
             <TextBlock Style="{StaticResource WxlSubtitle}"
-                       Text="Pre-processes model assets so WarcraftXL can load them faster. Point at your custom assets folder (containing .m2 / .blp files). Safe to skip." />
+                       Text="Cold converting pre-bakes M2 / WMO / ADT / BLP assets so the TLK 3.3.5a client loads them natively, removing WXL's hot-conversion cost at runtime. Optional; only needed before shipping a build." />
 
             <Border Style="{StaticResource WxlSection}" Margin="0,0,0,16">
                 <StackPanel>
-                    <TextBlock Style="{StaticResource WxlFieldLabel}" Text="Assets folder" />
-                    <Grid Margin="0,0,0,8">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="*" />
-                            <ColumnDefinition Width="Auto" />
-                        </Grid.ColumnDefinitions>
-                        <ui:TextBox x:Name="TxtAssetsPath" Grid.Column="0" TextChanged="TxtAssets_Changed" />
-                        <ui:Button Grid.Column="1" Margin="8,0,0,0" Content="Browse…" Click="BrowseAssets_Click" />
-                    </Grid>
-                    <TextBlock Style="{StaticResource WxlHint}"
-                               Text="Folder containing the .m2 / .blp / .wmo / .adt files to convert." />
+                    <TextBlock Style="{StaticResource WxlFieldLabel}" Text="What it does" />
+                    <TextBlock Style="{StaticResource WxlHint}" TextWrapping="Wrap">
+                        <Run Text="• M2 / Anim — animation id fixes, ribbon emitters, external .anim unwrapping, shadow-swing billboard fix." />
+                        <LineBreak />
+                        <Run Text="• WMO — doodads, portals/culling, collision, lights, liquid, vertex-color neutralization." />
+                        <LineBreak />
+                        <Run Text="• ADT — terrain holes, water, doodad/WMO placements, texture layers, area/ground-effect ids, WDT/WDL companion files." />
+                        <LineBreak />
+                        <Run Text="• BLP — DXT5 transcoding, per-folder size caps." />
+                    </TextBlock>
 
-                    <TextBlock Style="{StaticResource WxlFieldLabel}" Text="Output folder" Margin="0,12,0,0" />
-                    <Grid Margin="0,0,0,4">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="*" />
-                            <ColumnDefinition Width="Auto" />
-                        </Grid.ColumnDefinitions>
-                        <ui:TextBox x:Name="TxtOutputPath" Grid.Column="0" TextChanged="TxtOutput_Changed" />
-                        <ui:Button Grid.Column="1" Margin="8,0,0,0" Content="Browse…" Click="BrowseOutput_Click" />
-                    </Grid>
-                    <TextBlock Style="{StaticResource WxlHint}"
-                               Text="Folder where the converted (baked) assets will be written." />
+                    <TextBlock Style="{StaticResource WxlFieldLabel}" Text="Links" Margin="0,12,0,0" />
+                    <TextBlock>
+                        <Hyperlink NavigateUri="https://github.com/WarcraftXL/wxl-cold-converter"
+                                   RequestNavigate="Hyperlink_RequestNavigate">Repository</Hyperlink>
+                        <Run Text="    " />
+                        <Hyperlink NavigateUri="https://github.com/WarcraftXL/wxl-cold-converter/releases"
+                                   RequestNavigate="Hyperlink_RequestNavigate">All releases</Hyperlink>
+                    </TextBlock>
                 </StackPanel>
             </Border>
 
             <Border Style="{StaticResource WxlSection}">
                 <StackPanel>
-                    <StackPanel Orientation="Horizontal" Margin="0,0,0,12">
-                        <ui:Button x:Name="BtnRun"
+                    <TextBlock Style="{StaticResource WxlFieldLabel}" Text="Cold Converter" />
+                    <TextBlock x:Name="LblInstalled" Style="{StaticResource WxlHint}" TextWrapping="Wrap"
+                               Text="Not downloaded yet." />
+
+                    <StackPanel Orientation="Horizontal" Margin="0,12,0,0">
+                        <ui:Button x:Name="BtnLaunch"
                                    Appearance="Primary"
-                                   Content="Run Cold Convert"
-                                   Click="BtnRun_Click" />
+                                   Content="Download &amp; run latest"
+                                   Click="BtnLaunch_Click" />
+                        <ui:Button x:Name="BtnReinstall"
+                                   Content="Re-download"
+                                   Margin="8,0,0,0"
+                                   Click="BtnReinstall_Click" />
+                        <ui:Button x:Name="BtnOpenFolder"
+                                   Content="Open folder"
+                                   Margin="8,0,0,0"
+                                   Click="BtnOpenFolder_Click" />
                     </StackPanel>
 
                     <ProgressBar x:Name="Progress"
@@ -63,11 +62,11 @@
                                  Minimum="0" Maximum="100"
                                  Foreground="{StaticResource WxlGoldBrush}"
                                  Background="{StaticResource WxlSurfaceAltBrush}"
-                                 Margin="0,0,0,8" />
+                                 Margin="0,12,0,8" />
 
                     <TextBlock x:Name="LblStatus"
                                Style="{StaticResource WxlHint}"
-                               Text="Enter your assets folder and click Run Cold Convert, or skip this step." />
+                               Text="The converter is a separate GUI. We'll download the latest release and open it for you." />
                 </StackPanel>
             </Border>
 
