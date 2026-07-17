@@ -108,6 +108,34 @@ namespace WXL_Installer.Views
                 return;
             }
 
+            if (Directory.Exists(wxl) &&
+                (Directory.EnumerateFileSystemEntries(wxl).Any()))
+            {
+                var confirm = MessageBox.Show(
+                    $"The folder\n\n    {wxl}\n\nis not empty. Installing the core will DELETE its current contents and replace them with a fresh copy of wxl-core from GitHub.\n\nContinue?",
+                    "Overwrite existing core?",
+                    MessageBoxButton.YesNo,
+                    MessageBoxImage.Warning);
+                if (confirm != MessageBoxResult.Yes)
+                {
+                    SetCoreStatus("Install cancelled.", "WxlTextMutedBrush");
+                    return;
+                }
+
+                try
+                {
+                    foreach (var dir in Directory.EnumerateDirectories(wxl))
+                        Directory.Delete(dir, true);
+                    foreach (var file in Directory.EnumerateFiles(wxl))
+                        File.Delete(file);
+                }
+                catch (Exception ex)
+                {
+                    SetCoreStatus("Could not clear folder: " + ex.Message, "WxlDangerBrush");
+                    return;
+                }
+            }
+
             BtnInstallCore.IsEnabled = false;
             PbCore.Value = 0;
             PbCore.IsIndeterminate = true;

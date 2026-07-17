@@ -18,6 +18,7 @@ namespace WXL_Installer.Views
         {
             InitializeComponent();
             TxtAssetsPath.Text = _state.Settings.AssetsPath ?? "";
+            TxtOutputPath.Text = _state.Settings.ColdOutputPath ?? "";
         }
 
         private void TxtAssets_Changed(object sender, TextChangedEventArgs e)
@@ -26,10 +27,22 @@ namespace WXL_Installer.Views
             _state.Settings.Save();
         }
 
-        private void Browse_Click(object sender, RoutedEventArgs e)
+        private void TxtOutput_Changed(object sender, TextChangedEventArgs e)
+        {
+            _state.Settings.ColdOutputPath = TxtOutputPath.Text?.Trim();
+            _state.Settings.Save();
+        }
+
+        private void BrowseAssets_Click(object sender, RoutedEventArgs e)
         {
             var dlg = new Microsoft.Win32.OpenFolderDialog { InitialDirectory = TxtAssetsPath.Text ?? "" };
             if (dlg.ShowDialog() == true) TxtAssetsPath.Text = dlg.FolderName;
+        }
+
+        private void BrowseOutput_Click(object sender, RoutedEventArgs e)
+        {
+            var dlg = new Microsoft.Win32.OpenFolderDialog { InitialDirectory = TxtOutputPath.Text ?? "" };
+            if (dlg.ShowDialog() == true) TxtOutputPath.Text = dlg.FolderName;
         }
 
         private void BtnHelp_Click(object sender, RoutedEventArgs e)
@@ -51,6 +64,19 @@ namespace WXL_Installer.Views
             if (string.IsNullOrEmpty(assetsPath) || !Directory.Exists(assetsPath))
             {
                 SetStatus("Please select a valid assets folder first.", "WxlDangerBrush");
+                return;
+            }
+
+            var outputPath = TxtOutputPath.Text?.Trim();
+            if (string.IsNullOrEmpty(outputPath))
+            {
+                SetStatus("Please select an output folder for the converted assets.", "WxlDangerBrush");
+                return;
+            }
+            try { Directory.CreateDirectory(outputPath); }
+            catch (Exception ex)
+            {
+                SetStatus("Could not create output folder: " + ex.Message, "WxlDangerBrush");
                 return;
             }
 
@@ -89,7 +115,7 @@ namespace WXL_Installer.Views
 
                 SetStatus("Running cold-converter — this can take a while…", "WxlTextMutedBrush");
                 Progress.Value = 75;
-                var psi = new ProcessStartInfo(exePath, $"\"{assetsPath}\"")
+                var psi = new ProcessStartInfo(exePath, $"\"{assetsPath}\" \"{outputPath}\"")
                 {
                     UseShellExecute = false,
                     RedirectStandardOutput = true,

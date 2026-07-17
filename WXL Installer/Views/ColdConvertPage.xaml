@@ -24,14 +24,28 @@
             <Border Style="{StaticResource WxlSection}" Margin="0,0,0,16">
                 <StackPanel>
                     <TextBlock Style="{StaticResource WxlFieldLabel}" Text="Assets folder" />
-                    <Grid Margin="0,0,0,4">
+                    <Grid Margin="0,0,0,8">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="*" />
                             <ColumnDefinition Width="Auto" />
                         </Grid.ColumnDefinitions>
                         <ui:TextBox x:Name="TxtAssetsPath" Grid.Column="0" TextChanged="TxtAssets_Changed" />
-                        <ui:Button Grid.Column="1" Margin="8,0,0,0" Content="Browse…" Click="Browse_Click" />
+                        <ui:Button Grid.Column="1" Margin="8,0,0,0" Content="Browse…" Click="BrowseAssets_Click" />
                     </Grid>
+                    <TextBlock Style="{StaticResource WxlHint}"
+                               Text="Folder containing the .m2 / .blp / .wmo / .adt files to convert." />
+
+                    <TextBlock Style="{StaticResource WxlFieldLabel}" Text="Output folder" Margin="0,12,0,0" />
+                    <Grid Margin="0,0,0,4">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <ui:TextBox x:Name="TxtOutputPath" Grid.Column="0" TextChanged="TxtOutput_Changed" />
+                        <ui:Button Grid.Column="1" Margin="8,0,0,0" Content="Browse…" Click="BrowseOutput_Click" />
+                    </Grid>
+                    <TextBlock Style="{StaticResource WxlHint}"
+                               Text="Folder where the converted (baked) assets will be written." />
                 </StackPanel>
             </Border>
 

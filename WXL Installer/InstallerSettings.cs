@@ -22,6 +22,9 @@ namespace WXL_Installer
         [DataMember(Name = "assetsPath")]
         public string AssetsPath { get; set; }
 
+        [DataMember(Name = "coldOutputPath")]
+        public string ColdOutputPath { get; set; }
+
         [DataMember(Name = "db2StagingPath")]
         public string Db2StagingPath { get; set; }
 
@@ -30,6 +33,7 @@ namespace WXL_Installer
             WxlPath = string.Empty;
             ClientPath = string.Empty;
             AssetsPath = string.Empty;
+            ColdOutputPath = string.Empty;
             Db2StagingPath = string.Empty;
         }
 
