@@ -301,7 +301,14 @@ namespace WXL_Installer.Views
                         owner = repo.FullName.Split('/')[0];
 
                     var moduleDir = Path.Combine(scriptsRoot, name);
-                    await GitHubHelper.DownloadAndExtractRepoAsync(owner, name, moduleDir, prog, CancellationToken.None);
+                    try
+                    {
+                        await GitHubHelper.DownloadAndExtractRepoAsync(owner, name, moduleDir, prog, CancellationToken.None);
+                    }
+                    catch (Exception exModule)
+                    {
+                        throw new Exception($"Failed to install '{owner}/{name}': {exModule.Message}", exModule);
+                    }
 
                     PbCore.IsIndeterminate = false;
                     PbCore.Value = ((idx + 1.0) / total) * 100.0;

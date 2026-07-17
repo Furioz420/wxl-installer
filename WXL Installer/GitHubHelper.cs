@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Net;
 using System.Net.Http;
 using System.Runtime.Serialization;
@@ -181,18 +182,44 @@ namespace WXL_Installer
             string owner, string repo, string destDir,
             IProgress<DownloadProgress> progress, CancellationToken ct)
         {
-            // Resolve the actual default branch (main, master, ...) — codeload's HEAD alias returns 403.
-            string branch = "main";
-            try { branch = GetRepo(owner, repo).DefaultBranch ?? "main"; }
+            // Prefer the actual default branch from the API, but fall back to trying
+            // common branch names if the API is rate-limited or the repo lookup fails.
+            var branches = new List<string>();
+            try
+            {
+                var b = GetRepo(owner, repo)?.DefaultBranch;
+                if (!string.IsNullOrEmpty(b)) branches.Add(b);
+            }
             catch { }
+            foreach (var fallback in new[] { "main", "master" })
+                if (!branches.Contains(fallback, StringComparer.OrdinalIgnoreCase))
+                    branches.Add(fallback);
 
-            var url = "https://github.com/" + owner + "/" + repo + "/archive/refs/heads/" + branch + ".zip";
             var tempZip = Path.Combine(Path.GetTempPath(), owner + "-" + repo + "-" + Guid.NewGuid().ToString("N") + ".zip");
             var tempExtract = tempZip + "-x";
 
+            Exception lastError = null;
+            string usedUrl = null;
             try
             {
-                await DownloadFileAsync(url, tempZip, progress, ct).ConfigureAwait(false);
+                foreach (var branch in branches)
+                {
+                    var url = "https://github.com/" + owner + "/" + repo + "/archive/refs/heads/" + branch + ".zip";
+                    try
+                    {
+                        await DownloadFileAsync(url, tempZip, progress, ct).ConfigureAwait(false);
+                        usedUrl = url;
+                        break;
+                    }
+                    catch (HttpRequestException ex) when (ex.StatusCode == HttpStatusCode.NotFound)
+                    {
+                        lastError = new HttpRequestException(
+                            $"404 Not Found for {owner}/{repo} branch '{branch}' ({url}).", ex, HttpStatusCode.NotFound);
+                        // Try next branch.
+                    }
+                }
+                if (usedUrl == null)
+                    throw lastError ?? new Exception($"Could not download {owner}/{repo}: no known branch (tried {string.Join(", ", branches)}).");
 
                 if (Directory.Exists(tempExtract)) Directory.Delete(tempExtract, true);
                 System.IO.Compression.ZipFile.ExtractToDirectory(tempZip, tempExtract);
