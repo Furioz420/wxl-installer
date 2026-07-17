@@ -39,18 +39,28 @@ namespace WXL_Installer
         /// Runs a background check. If an update is available, prompts the user;
         /// if they accept, performs the swap and exits the app.
         /// </summary>
-        public static async Task CheckAsync(bool showUpToDate = false)
+        public static async Task CheckAsync(bool showUpToDate = false, Action<string> status = null)
         {
             try
             {
+                status?.Invoke("Contacting GitHub…");
                 var release = await Task.Run(() => GitHubHelper.GetLatestRelease(Owner, Repo));
-                if (release == null) return;
+                if (release == null)
+                {
+                    status?.Invoke("No release information available.");
+                    return;
+                }
 
                 var latest = ParseVersion(release.TagName);
-                if (latest == null) return;
+                if (latest == null)
+                {
+                    status?.Invoke($"Could not parse latest version tag '{release.TagName}'.");
+                    return;
+                }
 
                 if (latest <= CurrentVersion)
                 {
+                    status?.Invoke($"Up to date (v{CurrentVersion}).");
                     if (showUpToDate)
                     {
                         MessageBox.Show(
@@ -65,8 +75,13 @@ namespace WXL_Installer
                     a.Name != null &&
                     a.Name.EndsWith(".zip", StringComparison.OrdinalIgnoreCase) &&
                     a.Name.IndexOf(ReleaseAssetHint, StringComparison.OrdinalIgnoreCase) >= 0);
-                if (asset == null || string.IsNullOrEmpty(asset.BrowserDownloadUrl)) return;
+                if (asset == null || string.IsNullOrEmpty(asset.BrowserDownloadUrl))
+                {
+                    status?.Invoke($"v{latest} available but no downloadable asset was found.");
+                    return;
+                }
 
+                status?.Invoke($"Update available: v{latest}.");
                 var result = MessageBox.Show(
                     $"A new version of WXL Installer is available.\n\n" +
                     $"    Current: {CurrentVersion}\n" +
@@ -75,17 +90,22 @@ namespace WXL_Installer
                     "Update available",
                     MessageBoxButton.YesNo,
                     MessageBoxImage.Question);
-                if (result != MessageBoxResult.Yes) return;
+                if (result != MessageBoxResult.Yes)
+                {
+                    status?.Invoke($"Update to v{latest} skipped.");
+                    return;
+                }
 
-                await ApplyUpdateAsync(asset.BrowserDownloadUrl, latest);
+                status?.Invoke($"Downloading v{latest}…");
+                await ApplyUpdateAsync(asset.BrowserDownloadUrl, latest, status);
             }
-            catch
+            catch (Exception ex)
             {
-                // Silent failure — updater must never block app startup.
+                status?.Invoke("Update check failed: " + ex.Message);
             }
         }
 
-        private static async Task ApplyUpdateAsync(string zipUrl, Version newVersion)
+        private static async Task ApplyUpdateAsync(string zipUrl, Version newVersion, Action<string> status = null)
         {
             var stagingRoot = Path.Combine(
                 Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
@@ -101,6 +121,7 @@ namespace WXL_Installer
             Directory.CreateDirectory(extractPath);
 
             await GitHubHelper.DownloadFileAsync(zipUrl, zipPath, null);
+            status?.Invoke("Extracting update…");
             ZipFile.ExtractToDirectory(zipPath, extractPath, overwriteFiles: true);
 
             // GitHub-uploaded release zips may contain the files directly or nested
@@ -148,6 +169,7 @@ namespace WXL_Installer
                 CreateNoWindow = true
             });
 
+            status?.Invoke($"Installing v{newVersion} — restarting…");
             // Exit — the .bat will relaunch after files are swapped.
             Application.Current.Shutdown();
         }

@@ -28,7 +28,19 @@ namespace WXL_Installer.Views
         private async void BtnCheckUpdate_Click(object sender, RoutedEventArgs e)
         {
             BtnCheckUpdate.IsEnabled = false;
-            try { await Updater.CheckAsync(showUpToDate: true); }
+            LblUpdateStatus.Foreground = (Brush)Application.Current.Resources["WxlTextMutedBrush"];
+            LblUpdateStatus.Text = "Checking for updates…";
+            try
+            {
+                await Updater.CheckAsync(
+                    showUpToDate: true,
+                    status: msg => Dispatcher.Invoke(() => LblUpdateStatus.Text = msg));
+            }
+            catch (Exception ex)
+            {
+                LblUpdateStatus.Foreground = (Brush)Application.Current.Resources["WxlDangerBrush"];
+                LblUpdateStatus.Text = "Update check failed: " + ex.Message;
+            }
             finally { BtnCheckUpdate.IsEnabled = true; }
         }
 
