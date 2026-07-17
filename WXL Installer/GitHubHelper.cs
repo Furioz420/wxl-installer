@@ -157,7 +157,17 @@ namespace WXL_Installer
         }
 
         public static GitHubRelease GetLatestRelease(string owner, string repo)
-            => GetJson<GitHubRelease>(ApiBase + "/repos/" + owner + "/" + repo + "/releases/latest");
+        {
+            try
+            {
+                return GetJson<GitHubRelease>(ApiBase + "/repos/" + owner + "/" + repo + "/releases/latest");
+            }
+            catch (HttpRequestException ex) when (ex.Message.Contains("404"))
+            {
+                // No published (non-draft) release exists yet.
+                return null;
+            }
+        }
 
         public static GitHubRepo GetRepo(string owner, string repo)
             => GetJson<GitHubRepo>(ApiBase + "/repos/" + owner + "/" + repo);

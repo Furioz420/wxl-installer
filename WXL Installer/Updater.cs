@@ -47,7 +47,7 @@ namespace WXL_Installer
                 var release = await Task.Run(() => GitHubHelper.GetLatestRelease(Owner, Repo));
                 if (release == null)
                 {
-                    status?.Invoke("No release information available.");
+                    status?.Invoke($"Up to date (v{CurrentVersion}) \u2014 no published release found.");
                     return;
                 }
 
