@@ -1,0 +1,70 @@
+<ui:FluentWindow x:Class="WXL_Installer.MainWindow"
+                 xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                 xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                 xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
+                 xmlns:views="clr-namespace:WXL_Installer.Views"
+                 Title="WarcraftXL Installer"
+                 Width="1080" Height="720"
+                 MinWidth="900" MinHeight="600"
+                 WindowStartupLocation="CenterScreen"
+                 ExtendsContentIntoTitleBar="True"
+                 WindowBackdropType="Mica"
+                 Background="{DynamicResource WxlBackgroundBrush}">
+
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+
+        <ui:TitleBar Grid.Row="0"
+                     Title="WarcraftXL Installer"
+                     ShowMaximize="False" />
+
+        <ui:NavigationView x:Name="Nav"
+                           Grid.Row="1"
+                           PaneDisplayMode="Left"
+                           OpenPaneLength="220"
+                           IsBackButtonVisible="Collapsed"
+                           IsPaneToggleVisible="True"
+                           Navigating="Nav_Navigating">
+
+            <ui:NavigationView.MenuItems>
+                <ui:NavigationViewItem Content="Welcome"
+                                       TargetPageType="{x:Type views:WelcomePage}">
+                    <ui:NavigationViewItem.Icon>
+                        <ui:SymbolIcon Symbol="Home24" />
+                    </ui:NavigationViewItem.Icon>
+                </ui:NavigationViewItem>
+
+                <ui:NavigationViewItem Content="Cold Convert"
+                                       TargetPageType="{x:Type views:ColdConvertPage}">
+                    <ui:NavigationViewItem.Icon>
+                        <ui:SymbolIcon Symbol="Wand24" />
+                    </ui:NavigationViewItem.Icon>
+                </ui:NavigationViewItem>
+
+                <ui:NavigationViewItem Content="Core &amp; Modules"
+                                       TargetPageType="{x:Type views:CoreModulesPage}">
+                    <ui:NavigationViewItem.Icon>
+                        <ui:SymbolIcon Symbol="AppsAddIn24" />
+                    </ui:NavigationViewItem.Icon>
+                </ui:NavigationViewItem>
+
+                <ui:NavigationViewItem Content="DB2 Files"
+                                       TargetPageType="{x:Type views:Db2Page}">
+                    <ui:NavigationViewItem.Icon>
+                        <ui:SymbolIcon Symbol="Database24" />
+                    </ui:NavigationViewItem.Icon>
+                </ui:NavigationViewItem>
+
+                <ui:NavigationViewItem Content="Build &amp; Deploy"
+                                       TargetPageType="{x:Type views:BuildPage}">
+                    <ui:NavigationViewItem.Icon>
+                        <ui:SymbolIcon Symbol="Rocket24" />
+                    </ui:NavigationViewItem.Icon>
+                </ui:NavigationViewItem>
+            </ui:NavigationView.MenuItems>
+        </ui:NavigationView>
+    </Grid>
+</ui:FluentWindow>

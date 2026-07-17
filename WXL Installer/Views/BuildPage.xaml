@@ -1,0 +1,68 @@
+<Page x:Class="WXL_Installer.Views.BuildPage"
+      xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+      xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+      xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
+      Title="Build &amp; Deploy"
+      Background="Transparent">
+
+    <Grid Margin="40,32,40,32">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+
+        <StackPanel Grid.Row="0">
+            <TextBlock Style="{StaticResource WxlTitle}" Text="Build, Deploy &amp; Patch" />
+            <TextBlock Style="{StaticResource WxlSubtitle}"
+                       Text="Builds the WarcraftXL DLL, proxy, patcher and host, deploys them to your WoW client and optionally patches Wow.exe. The patcher keeps Wow.exe.orig on its first run." />
+        </StackPanel>
+
+        <Border Grid.Row="1" Style="{StaticResource WxlSection}" Margin="0,0,0,12">
+            <StackPanel Orientation="Horizontal">
+                <CheckBox x:Name="ChkClean"
+                          Content="Clean build"
+                          Foreground="{StaticResource WxlTextBrush}"
+                          IsChecked="True"
+                          Margin="0,0,20,0" />
+                <CheckBox x:Name="ChkAutoPatch"
+                          Content="Patch Wow.exe"
+                          Foreground="{StaticResource WxlTextBrush}"
+                          IsChecked="True" />
+                <ui:Button x:Name="BtnBuild"
+                           Appearance="Primary"
+                           Content="Build &amp; Deploy"
+                           Margin="24,0,0,0"
+                           Click="BtnBuild_Click" />
+            </StackPanel>
+        </Border>
+
+        <ProgressBar Grid.Row="2"
+                     x:Name="Progress"
+                     Height="8"
+                     Minimum="0" Maximum="100"
+                     Foreground="{StaticResource WxlGoldBrush}"
+                     Background="{StaticResource WxlSurfaceAltBrush}"
+                     Margin="0,0,0,8" />
+
+        <TextBlock Grid.Row="3"
+                   x:Name="LblStatus"
+                   Style="{StaticResource WxlHint}"
+                   Text="Ready."
+                   Margin="0,0,0,10" />
+
+        <Border Grid.Row="4" Style="{StaticResource WxlSection}" Padding="0">
+            <TextBox x:Name="TxtLog"
+                     IsReadOnly="True"
+                     AcceptsReturn="True"
+                     VerticalScrollBarVisibility="Auto"
+                     HorizontalScrollBarVisibility="Auto"
+                     FontFamily="Consolas" FontSize="12"
+                     Background="{StaticResource WxlBackgroundBrush}"
+                     Foreground="{StaticResource WxlTextBrush}"
+                     BorderThickness="0" />
+        </Border>
+    </Grid>
+</Page>

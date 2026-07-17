@@ -1,0 +1,65 @@
+<Page x:Class="WXL_Installer.Views.CoreModulesPage"
+      xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+      xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+      xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
+      Title="Core &amp; Modules"
+      Background="Transparent"
+      PreviewMouseWheel="Page_PreviewMouseWheel">
+
+    <Grid Margin="40,32,40,32">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+
+        <StackPanel Grid.Row="0">
+            <TextBlock Style="{StaticResource WxlTitle}" Text="Install WXL Core &amp; Select Modules" />
+            <TextBlock Style="{StaticResource WxlSubtitle}"
+                       Text="Install (or reinstall) wxl-core, then pick which community modules to sync into your scripts folder. wxl-host-extension is required." />
+        </StackPanel>
+
+        <Border Grid.Row="1" Style="{StaticResource WxlSection}" Margin="0,0,0,16">
+            <StackPanel>
+                <TextBlock x:Name="LblCoreStatus"
+                           Style="{StaticResource WxlHint}"
+                           Text="Checking core status…"
+                           Margin="0,0,0,10" />
+                <StackPanel Orientation="Horizontal">
+                    <ui:Button x:Name="BtnInstallCore"
+                               Appearance="Primary"
+                               Content="Install core &amp; selected modules"
+                               IsEnabled="False"
+                               Click="BtnInstallCore_Click" />
+                    <ProgressBar x:Name="PbCore"
+                                 Width="360" Height="8"
+                                 Minimum="0" Maximum="100"
+                                 Margin="16,0,0,0"
+                                 VerticalAlignment="Center"
+                                 Foreground="{StaticResource WxlGoldBrush}"
+                                 Background="{StaticResource WxlSurfaceAltBrush}" />
+                </StackPanel>
+            </StackPanel>
+        </Border>
+
+        <Grid Grid.Row="2" Margin="0,0,0,8">
+            <TextBlock Foreground="{StaticResource WxlGoldBrush}"
+                       FontSize="14" FontWeight="SemiBold"
+                       Text="Available modules" />
+        </Grid>
+
+        <Border Grid.Row="3" Style="{StaticResource WxlSection}" Padding="0">
+            <ScrollViewer x:Name="ModulesScroll"
+                          VerticalScrollBarVisibility="Auto"
+                          HorizontalScrollBarVisibility="Disabled"
+                          PanningMode="VerticalOnly"
+                          CanContentScroll="False"
+                          PreviewMouseWheel="ModulesScroll_PreviewMouseWheel">
+                <StackPanel x:Name="ModulesList"
+                            Margin="12"
+                            Background="Transparent" />
+            </ScrollViewer>
+        </Border>
+    </Grid>
+</Page>
